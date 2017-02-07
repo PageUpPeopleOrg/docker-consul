@@ -36,6 +36,17 @@ if [ -n "$CONSUL_CLIENT_INTERFACE" ]; then
   echo "==> Found address '$CONSUL_CLIENT_ADDRESS' for interface '$CONSUL_CLIENT_INTERFACE', setting client option..."
 fi
 
+# Source: https://blog.unif.io/deploying-consul-with-ecs-2c4ca7ab2981#.5syddqq4b
+# Set advertisement and node name for use with AWS ECS
+if [ "$DEPLOY_TYPE" = "ecs" ]; then
+  ADVERTISE_IP=$(curl -s 169.254.169.254/latest/meta-data/local-ipv4)
+  NODE_ID=$(curl -s 169.254.169.254/latest/meta-data/instance-id)
+  CONSUL_AD="-advertise=$ADVERTISE_IP"
+  echo "==> Found address '$ADVERTISE_IP' for use with ECS"
+  CONSUL_NODE="-node=$NODE_ID"
+  echo "==> Found name '$NODE_ID' for use with ECS"
+fi
+
 # CONSUL_DATA_DIR is exposed as a volume for possible persistent storage. The
 # CONSUL_CONFIG_DIR isn't exposed as a volume but you can compose additional
 # config files in there if you use this image as a base, or use CONSUL_LOCAL_CONFIG
@@ -63,6 +74,8 @@ if [ "$1" = 'agent' ]; then
         -config-dir="$CONSUL_CONFIG_DIR" \
         $CONSUL_BIND \
         $CONSUL_CLIENT \
+        $CONSUL_NODE \
+        $CONSUL_AD \
         "$@"
 elif [ "$1" = 'version' ]; then
     # This needs a special case because there's no help output.
